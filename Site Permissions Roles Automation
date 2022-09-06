@@ -1,0 +1,92 @@
+'''
+08.22.22
+
+Developer: Vishal Kuttin, Intern Prog/Analyst
+
+Usage: 
+    ./siterolepermissions.PY
+
+Scope:
+This code modifies the site roles within Tableau's Users section.
+
+If the site role is set to "Explorer (can publish)," it changes to "Explorer."
+
+After each execution of the script, it logs the output of the changes in "DATE|USERNAME|OLD SITE ROLE|NEW SITE ROLE" format in a log file. 
+'''
+#Imported Modules
+from datetime import date, datetime
+import tableauserverclient as TSC
+import logging
+from datetime import datetime as d
+
+#Importing the StringIO Module
+from io import StringIO
+import os.path
+
+#Output Location and File Creation
+outFileName="[file path]"
+
+log_buffer = StringIO()
+writeline = ''
+date = d.now()
+
+#Log Initialize
+logging.basicConfig(stream=log_buffer, level=logging.INFO,)
+
+#Personal login information
+tableau_auth=TSC.PersonalAccessTokenAuth('[token name]', '[token value]') 
+
+#Server Address
+server=TSC.Server('[insert tableau server]',use_server_version=True)
+
+#Signs into server
+with server.auth.sign_in(tableau_auth):  
+    server.use_server_version()
+    request_option = TSC.RequestOptions()
+
+    #Filters the users that has "Explorer (can publish)"
+    request_option.filter.add(TSC.Filter(TSC.RequestOptions.Field.SiteRole,  
+    TSC.RequestOptions.Operator.In,
+    ['ExplorerCanPublish']))                           
+    all_users, pagination_item = server.users.get(request_option)
+
+    #Initializes variables and formats the information pulled from the Tableau server
+    for u in all_users:
+        #Replaces "Explorer (can publish)" to "Explorer"
+        if u.site_role == 'ExplorerCanPublish': 
+            username = u.name  
+            #Explorer (can publish) 
+            oldsiterole = u.site_role  
+            #Explorer
+            newsiterole = u.site_role='Explorer'  
+            server.users.update(u)
+            #Formats requested data into "DATE|USERNAME|OLD_SITE_ROLE|NEW_SITE_ROLE" format
+            logging.info('%s|%s|%s|%s',  
+            #Date
+            date.strftime("%Y-%m-%d %H:%M:%S"),  
+            username,  
+            oldsiterole, 
+            newsiterole) 
+#Signs out of Server
+server.auth.sign_out()
+
+#Formats log_buffer variable for with loop
+log_buffer.write(writeline)
+log_buffer.getvalue()
+log_buffer.seek(0)
+
+#Opens log file
+with open(outFileName,'a') as the_file1:  
+   for line in log_buffer:
+#Removes "INFO:root:" from data pull 
+    if line.startswith("INFO:root:"):
+            line = line.replace("INFO:root:", "")
+            the_file1.write(line)
+#Closes file that was made
+the_file1.close()
+
+
+
+
+
+ 
